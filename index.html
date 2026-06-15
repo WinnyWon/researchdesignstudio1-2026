@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Drag Texts into Texaphics</title>
+
+<style>
+*{ box-sizing:border-box; }
+
+html,body{
+  margin:0;
+  width:100%;
+  height:100%;
+  overflow:hidden;
+  background:#efefef;
+  color:#111;
+  font-family:"Times New Roman", Times, serif;
+}
+
+.stage{
+  position:relative;
+  width:100vw;
+  height:100vh;
+  background:#efefef;
+  overflow:hidden;
+}
+
+.top-panel{
+  position:absolute;
+  left:9vw;
+  top:0;
+  width:82vw;
+  height:81vh;
+  background:#fff;
+  clip-path:polygon(5% 0%,95% 0%,100% 100%,0% 100%);
+  overflow:hidden;
+}
+
+.bottom-panel{
+  position:absolute;
+  left:0;
+  bottom:0;
+  width:100vw;
+  height:19vh;
+  background:#fff;
+  clip-path:polygon(9vw 0%,91vw 0%,100% 100%,0% 100%);
+  overflow:hidden;
+}
+
+.frame-lines{
+  position:absolute;
+  inset:0;
+  width:100%;
+  height:100%;
+  z-index:50;
+  pointer-events:none;
+}
+
+.frame-lines line{
+  stroke:#d2c7b8;
+  stroke-width:1;
+  vector-effect:non-scaling-stroke;
+}
+
+.text-area{
+  position:absolute;
+  inset:0;
+  overflow-y:auto;
+  overflow-x:hidden;
+  padding:4vh 10vw 8vh 11vw;
+  font-family:"Times New Roman", Times, serif;
+  font-size:2.45vw;
+  line-height:.95;
+  letter-spacing:-0.03em;
+  font-style:normal;
+  font-weight:400;
+  transform:skewX(-3deg);
+  transform-origin:left top;
+  clip-path:polygon(7% 0%,93% 0%,98% 100%,2% 100%);
+}
+
+.text-area::-webkit-scrollbar{ width:8px; }
+.text-area::-webkit-scrollbar-thumb{
+  background:#cfc4b5;
+  border-radius:999px;
+}
+.text-area::-webkit-scrollbar-track{ background:transparent; }
+
+.entry{ margin-bottom:5vh; }
+.entry strong{ font-weight:900; }
+.entry.active{ background:#e6ddd1; }
+
+::selection{
+  background:#e6ddd1;
+  color:#111;
+}
+
+.big-title{
+  position:absolute;
+  left:17vw;
+  top:4vh;
+  font-family:"Times New Roman", Times, serif;
+  font-size:7.2vw;
+  line-height:.82;
+  font-weight:900;
+  font-style:normal;
+  letter-spacing:-0.09em;
+  white-space:nowrap;
+  transform:skewX(-3deg) scaleX(1.04);
+  transform-origin:left center;
+}
+
+.hint{
+  position:fixed;
+  left:24px;
+  bottom:18px;
+  font-family:Arial, sans-serif;
+  font-size:12px;
+  border:1px solid #d2c7b8;
+  background:#fff;
+  padding:8px 10px;
+  z-index:80;
+}
+
+.search-button{
+  position:fixed;
+  right:24px;
+  bottom:18px;
+
+  font-family:Arial, Helvetica, sans-serif;
+  font-size:12px;
+  text-decoration:none;
+  color:#111;
+
+  border:1px solid #d2c7b8;
+  background:#fff;
+
+  padding:8px 12px;
+
+  z-index:90;
+}
+
+.search-button:hover{
+  background:#e6ddd1;
+}
+</style>
+</head>
+
+<body>
+
+<div class="stage">
+  <section class="top-panel">
+    <main class="text-area" id="textArea"></main>
+  </section>
+
+  <section class="bottom-panel">
+    <div class="big-title">Drag Texts into Texaphics</div>
+  </section>
+
+  <svg class="frame-lines" viewBox="0 0 100 100" preserveAspectRatio="none">
+    <line x1="13.1" y1="0" x2="9" y2="81" />
+    <line x1="86.9" y1="0" x2="91" y2="81" />
+    <line x1="9" y1="81" x2="91" y2="81" />
+    <line x1="9" y1="81" x2="0" y2="100" />
+    <line x1="91" y1="81" x2="100" y2="100" />
+  </svg>
+</div>
+
+<div class="hint">drag text → find related diagram</div>
+<a class="search-button" href="search.html">
+    Search by Keyword
+  </a>
+
+<script>
+const diagrams = [
+{
+title:"Action–Reflection Cycle",
+text:`1 SHARING VALUES, EXPERIENCE AND SOCIAL KNOWLEDGE
+2 ANALYSIS: EXPLORING MYTHS, FACTS AND TRENDS
+3 SHARING DREAMS AND LONG AND SHORT-TERM ADJECTIVES
+4 DEVELOPING STRATEGIES, TACTICS AND PLANS FOR ACTION
+5 TAKING ACTION: ONGOING PROCESS OF ACTION-REFLECTION-ACTION`
+},
+{
+title:"Beyond Branding",
+text:`Editorial, Aesthetics, Creative Direction, Digital Motion, Physical Ecosystems, Audiovisual, Paid Media, Context, Trend Forecasting, Communities, Management, Typography, Visual Experimentation, Visual Development, Identity through Physical Motion, Digital Ecosystems, Identity through Food Design, Innovative Conceptualization, Critical Sociology, Zeitgeist, Narrative, Identity through Introspection, Visual, Foundational, Experimental, Strategic`
+}
+];
+
+const textArea = document.getElementById("textArea");
+
+textArea.innerHTML = diagrams.map((d,i)=>`
+  <div class="entry" data-index="${i}">
+    <strong>${d.title},</strong>
+    ${d.text}
+  </div>
+`).join("");
+
+document.addEventListener("mouseup",()=>{
+  const selected = window.getSelection().toString().trim();
+
+  if(selected.length > 0){
+    const encodedText = encodeURIComponent(selected);
+    window.location.href = `draw.html?q=${encodedText}`;
+  }
+});
+</script>
+
+</body>
+</html>

@@ -1,0 +1,538 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Draw Diagram</title>
+
+<style>
+*{
+  box-sizing:border-box;
+}
+
+html,body{
+  margin:0;
+  width:100%;
+  height:100%;
+  overflow:hidden;
+  background:#efefef;
+  font-family:Arial, Helvetica, sans-serif;
+  color:#111;
+  cursor:crosshair;
+}
+
+.draw-stage{
+  position:relative;
+  width:100vw;
+  height:100vh;
+  overflow:hidden;
+  background:#efefef;
+}
+
+.main-area{
+  position:absolute;
+  left:0;
+  top:0;
+  width:calc(100vw - 360px);
+  height:100vh;
+  background:#efefef;
+  overflow:hidden;
+}
+
+#drawCanvas{
+  position:absolute;
+  left:0;
+  top:0;
+  width:100%;
+  height:100%;
+  z-index:1;
+}
+
+.word-layer{
+  position:absolute;
+  left:0;
+  top:0;
+  width:100%;
+  height:100%;
+  z-index:2;
+  pointer-events:none;
+}
+
+.floating-word{
+  position:absolute;
+  font-size:28px;
+  font-weight:800;
+  line-height:1;
+  color:#111;
+  white-space:nowrap;
+  user-select:none;
+  transform:translate(-50%, -50%);
+}
+
+.title-box{
+  position:absolute;
+  left:32px;
+  top:30px;
+  z-index:6;
+
+  display:inline-block;
+  width:auto;
+  max-width:760px;
+  background:#fff;
+  padding:18px 24px;
+
+  font-size:28px;
+  line-height:1.08;
+  font-weight:800;
+}
+
+.instruction-box{
+  position:absolute;
+  left:32px;
+  top:130px;
+  z-index:6;
+
+  display:inline-block;
+  width:auto;
+  background:#fff;
+  padding:16px 24px;
+
+  font-size:24px;
+  line-height:1.05;
+  font-weight:800;
+}
+
+.side-panel{
+  position:absolute;
+  top:0;
+  right:0;
+  width:360px;
+  height:100vh;
+  z-index:7;
+
+  background:#fff;
+  padding:34px 34px;
+
+  overflow:hidden;
+}
+
+.source-title{
+  margin:0 0 22px;
+  font-size:20px;
+  line-height:1.12;
+  font-weight:800;
+}
+
+.source-info{
+  font-size:20px;
+  line-height:1.12;
+  font-weight:800;
+  word-break:normal;
+  overflow-wrap:break-word;
+}
+
+.back-btn{
+  position:absolute;
+  left:32px;
+  bottom:104px;
+  z-index:8;
+
+  display:inline-block;
+  background:#fff;
+  color:#111;
+  text-decoration:none;
+
+  border:0;
+  padding:18px 24px;
+
+  font-size:22px;
+  line-height:1;
+  font-weight:800;
+  cursor:pointer;
+}
+
+.clear-btn{
+  position:absolute;
+  left:32px;
+  bottom:26px;
+  z-index:8;
+
+  background:#fff;
+  color:#111;
+
+  border:0;
+  padding:18px 24px;
+  min-width:360px;
+
+  font-size:22px;
+  line-height:1;
+  font-weight:800;
+  text-align:left;
+  cursor:pointer;
+}
+
+@media (max-width:900px){
+  .main-area{
+    width:100vw;
+    height:72vh;
+  }
+
+  .side-panel{
+    top:72vh;
+    left:0;
+    right:auto;
+    width:100vw;
+    height:28vh;
+    padding:20px 24px;
+    overflow:auto;
+  }
+
+  .source-title,
+  .source-info{
+    font-size:16px;
+    line-height:1.18;
+  }
+
+  .title-box{
+    left:20px;
+    top:20px;
+    max-width:calc(100vw - 40px);
+    padding:14px 18px;
+    font-size:22px;
+  }
+
+  .instruction-box{
+    left:20px;
+    top:108px;
+    padding:13px 18px;
+    font-size:18px;
+  }
+
+  .back-btn{
+    left:20px;
+    bottom:calc(28vh + 82px);
+    padding:14px 18px;
+    font-size:18px;
+  }
+
+  .clear-btn{
+    left:20px;
+    bottom:calc(28vh + 20px);
+    min-width:260px;
+    padding:14px 18px;
+    font-size:18px;
+  }
+
+  .floating-word{
+    font-size:22px;
+  }
+}
+</style>
+</head>
+
+<body>
+
+<div class="draw-stage">
+
+  <main class="main-area" id="mainArea">
+    <canvas id="drawCanvas"></canvas>
+
+    <div class="word-layer" id="wordLayer"></div>
+
+    <div class="title-box">
+      Reading diagrams without graphics. Visualize ’em and draw!
+    </div>
+
+    <div class="instruction-box">
+      Click + Drag to draw new lines
+    </div>
+
+    <a class="back-btn" href="index.html">back</a>
+    <button class="clear-btn" id="clearBtn">clear drawing</button>
+  </main>
+
+  <aside class="side-panel">
+    <div class="source-title">
+      Figure 1: Mark Lombardi:
+    </div>
+
+    <div class="source-info" id="sourceInfo">
+      Draw your own diagram from the selected words.
+    </div>
+  </aside>
+
+</div>
+
+<script>
+const mainArea = document.getElementById("mainArea");
+const canvas = document.getElementById("drawCanvas");
+const ctx = canvas.getContext("2d");
+const wordLayer = document.getElementById("wordLayer");
+const clearBtn = document.getElementById("clearBtn");
+const sourceInfo = document.getElementById("sourceInfo");
+
+let drawing = false;
+let lastX = 0;
+let lastY = 0;
+
+function resizeCanvas(){
+  const ratio = window.devicePixelRatio || 1;
+  const rect = mainArea.getBoundingClientRect();
+
+  canvas.width = rect.width * ratio;
+  canvas.height = rect.height * ratio;
+
+  canvas.style.width = rect.width + "px";
+  canvas.style.height = rect.height + "px";
+
+  ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
+
+  ctx.lineWidth = 3;
+  ctx.lineCap = "round";
+  ctx.lineJoin = "round";
+  ctx.strokeStyle = "#111";
+}
+
+resizeCanvas();
+
+window.addEventListener("resize", () => {
+  resizeCanvas();
+  placeWords();
+});
+
+function getSelectedText(){
+  const params = new URLSearchParams(window.location.search);
+  return params.get("q") || "";
+}
+
+function cleanWords(text){
+  return text
+    .replace(/[.,:;()“”"!?—–]/g, " ")
+    .split(/\s+/)
+    .map(word => word.trim())
+    .filter(word => word.length > 1)
+    .slice(0, 28);
+}
+
+function createRect(x, y, width, height){
+  return {
+    left:x - width / 2,
+    right:x + width / 2,
+    top:y - height / 2,
+    bottom:y + height / 2
+  };
+}
+
+function isOverlapping(a, b, padding){
+  return !(
+    a.right + padding < b.left ||
+    a.left - padding > b.right ||
+    a.bottom + padding < b.top ||
+    a.top - padding > b.bottom
+  );
+}
+
+function estimateTextWidth(word){
+  const temp = document.createElement("span");
+  temp.style.position = "absolute";
+  temp.style.visibility = "hidden";
+  temp.style.whiteSpace = "nowrap";
+  temp.style.fontFamily = "Arial, Helvetica, sans-serif";
+  temp.style.fontSize = "28px";
+  temp.style.fontWeight = "800";
+  temp.textContent = word;
+  document.body.appendChild(temp);
+  const width = temp.offsetWidth;
+  document.body.removeChild(temp);
+  return width;
+}
+
+function placeWords(){
+  const selectedText = getSelectedText();
+  const words = cleanWords(selectedText);
+
+  sourceInfo.textContent =
+    selectedText.length > 0
+      ? selectedText
+      : "Draw your own diagram from the selected words.";
+
+  wordLayer.innerHTML = "";
+
+  const areaRect = mainArea.getBoundingClientRect();
+  const areaW = areaRect.width;
+  const areaH = areaRect.height;
+
+  const finalWords = words.length > 0
+    ? words
+    : ["draw", "connect", "reflect", "practice", "act", "drive"];
+
+  const placedRects = [];
+
+  const avoidRects = [
+    {
+      left:24,
+      top:20,
+      right:820,
+      bottom:118
+    },
+    {
+      left:24,
+      top:120,
+      right:510,
+      bottom:205
+    },
+    {
+      left:20,
+      top:areaH - 190,
+      right:520,
+      bottom:areaH - 10
+    }
+  ];
+
+  avoidRects.forEach(rect => placedRects.push(rect));
+
+  const usableLeft = 120;
+  const usableRight = areaW - 120;
+  const usableTop = 250;
+  const usableBottom = areaH - 210;
+
+  finalWords.forEach((word, index) => {
+    const el = document.createElement("div");
+    el.className = "floating-word";
+    el.textContent = word;
+    wordLayer.appendChild(el);
+
+    const textWidth = estimateTextWidth(word);
+    const textHeight = 34;
+
+    let x = 0;
+    let y = 0;
+    let currentRect = null;
+    let success = false;
+
+    const cols = Math.ceil(Math.sqrt(finalWords.length * 1.5));
+    const rows = Math.ceil(finalWords.length / cols);
+
+    for(let attempt = 0; attempt < 1200; attempt++){
+      if(attempt < 500){
+        const col = (index + attempt) % cols;
+        const row = Math.floor((index + attempt) / cols) % rows;
+
+        const cellW = (usableRight - usableLeft) / cols;
+        const cellH = (usableBottom - usableTop) / rows;
+
+        x = usableLeft + cellW * (col + 0.5);
+        y = usableTop + cellH * (row + 0.5);
+
+        x += (Math.random() - 0.5) * cellW * 0.45;
+        y += (Math.random() - 0.5) * cellH * 0.45;
+      }else{
+        x = usableLeft + Math.random() * (usableRight - usableLeft);
+        y = usableTop + Math.random() * (usableBottom - usableTop);
+      }
+
+      currentRect = createRect(x, y, textWidth, textHeight);
+
+      if(
+        currentRect.left < 70 ||
+        currentRect.right > areaW - 70 ||
+        currentRect.top < 230 ||
+        currentRect.bottom > areaH - 190
+      ){
+        continue;
+      }
+
+      const overlap = placedRects.some(rect => isOverlapping(currentRect, rect, 38));
+
+      if(!overlap){
+        success = true;
+        break;
+      }
+    }
+
+    if(!success){
+      const fallbackCols = 4;
+      const fallbackCellW = (usableRight - usableLeft) / fallbackCols;
+      const fallbackCellH = 78;
+
+      const col = index % fallbackCols;
+      const row = Math.floor(index / fallbackCols);
+
+      x = usableLeft + fallbackCellW * (col + 0.5);
+      y = usableTop + fallbackCellH * row;
+
+      currentRect = createRect(x, y, textWidth, textHeight);
+    }
+
+    placedRects.push(currentRect);
+
+    el.style.left = x + "px";
+    el.style.top = y + "px";
+  });
+}
+
+placeWords();
+
+function getPointerPosition(event){
+  const rect = canvas.getBoundingClientRect();
+
+  if(event.touches && event.touches.length > 0){
+    return {
+      x:event.touches[0].clientX - rect.left,
+      y:event.touches[0].clientY - rect.top
+    };
+  }
+
+  return {
+    x:event.clientX - rect.left,
+    y:event.clientY - rect.top
+  };
+}
+
+function startDrawing(event){
+  event.preventDefault();
+
+  drawing = true;
+
+  const pos = getPointerPosition(event);
+  lastX = pos.x;
+  lastY = pos.y;
+}
+
+function draw(event){
+  if(!drawing) return;
+
+  event.preventDefault();
+
+  const pos = getPointerPosition(event);
+
+  ctx.beginPath();
+  ctx.moveTo(lastX, lastY);
+  ctx.lineTo(pos.x, pos.y);
+  ctx.stroke();
+
+  lastX = pos.x;
+  lastY = pos.y;
+}
+
+function stopDrawing(){
+  drawing = false;
+}
+
+canvas.addEventListener("mousedown", startDrawing);
+canvas.addEventListener("mousemove", draw);
+canvas.addEventListener("mouseup", stopDrawing);
+canvas.addEventListener("mouseleave", stopDrawing);
+
+canvas.addEventListener("touchstart", startDrawing, { passive:false });
+canvas.addEventListener("touchmove", draw, { passive:false });
+canvas.addEventListener("touchend", stopDrawing);
+
+clearBtn.addEventListener("click", () => {
+  const rect = canvas.getBoundingClientRect();
+  ctx.clearRect(0, 0, rect.width, rect.height);
+});
+</script>
+
+</body>
+</html>
